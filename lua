@@ -4360,59 +4360,154 @@ end
         Title = "Setting",
         Content = "Setting Farm"
     })
+-- Toggle for Fast Attack
+local ToggleFastAttack = Tabs.Setting:AddToggle("ToggleFastAttack", {Title = "Fast Attack", Default = true })
+ToggleFastAttack:OnChanged(function(vu)
+    FastAttack = vu
+end)
+Options.ToggleFastAttack:SetValue(true)
 
+_G.FastAttackDelay = 0.13
 
+local Client = game.Players.LocalPlayer
+local STOP = require(Client.PlayerScripts.CombatFramework.Particle)
+local STOPRL = require(game:GetService("ReplicatedStorage").CombatFramework.RigLib)
 
-    local ToggleBringMob = Tabs.Setting:AddToggle("ToggleBringMob", {Title = "Bring Mob", Default = true })
-    ToggleBringMob:OnChanged(function(Value)
-        BringMobs = Value
-    end)
-    Options.ToggleBringMob:SetValue(true)
-	task.spawn(function()
-        while task.wait() do
-        if BringMobs then
+spawn(function()
+    while task.wait() do
         pcall(function()
-          for i,v in pairs(game.Workspace.Enemies:GetChildren()) do
-          if not string.find(v.Name,"Boss") and v.Name == MonFarm and (v.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= 350 then
-          if InMyNetWork(v.HumanoidRootPart) then
-            if InMyNetWork(v.HumanoidRootPart) then
-          v.HumanoidRootPart.CFrame = FarmPos
-          v.HumanoidRootPart.CanCollide = false
-          v.HumanoidRootPart.Size = Vector3.new(1,1,1)
-		  if v.Humanoid:FindFirstChild("Animator") then
-			v.Humanoid.Animator:Destroy()
-		end
-          end
-        end
-          end
-          end
-          end)
-        end
-
-    end
+            if not shared.orl then shared.orl = STOPRL.wrapAttackAnimationAsync end
+            if not shared.cpc then shared.cpc = STOP.play end
+            
+            STOPRL.wrapAttackAnimationAsync = function(a, b, c, d, func)
+                local Hits = STOPRL.getBladeHits(b, c, d)
+                if Hits then
+                    if FastAttack then
+                        STOP.play = function() end
+                        a:Play(0.01, 0.01, 0.01)
+                        func(Hits)
+                        STOP.play = shared.cpc
+                        wait(a.length * 0.5)
+                        a:Stop()
+                    else
+                        a:Play()
+                    end
+                end
+            end
         end)
-      
-      task.spawn(function()
-        while true do wait()
+    end
+end)
+
+function GetBladeHit()
+    local CombatFrameworkLib = debug.getupvalues(require(game:GetService("Players").LocalPlayer.PlayerScripts.CombatFramework))
+    local CmrFwLib = CombatFrameworkLib[2]
+    local p13 = CmrFwLib.activeController
+    local weapon = p13.blades[1]
+    if not weapon then 
+        return weapon
+    end
+    while weapon.Parent ~= game.Players.LocalPlayer.Character do
+        weapon = weapon.Parent 
+    end
+    return weapon
+end
+
+function AttackHit()
+    local CombatFrameworkLib = debug.getupvalues(require(game:GetService("Players").LocalPlayer.PlayerScripts.CombatFramework))
+    local CmrFwLib = CombatFrameworkLib[2]
+    local plr = game.Players.LocalPlayer
+    for i = 1, 1 do
+        local bladehit = require(game.ReplicatedStorage.CombatFramework.RigLib).getBladeHits(plr.Character, {plr.Character.HumanoidRootPart}, 60)
+        local cac = {}
+        local hash = {}
+        for k, v in pairs(bladehit) do
+            if v.Parent:FindFirstChild("HumanoidRootPart") and not hash[v.Parent] then
+                table.insert(cac, v.Parent.HumanoidRootPart)
+                hash[v.Parent] = true
+            end
+        end
+        bladehit = cac
+        if #bladehit > 0 then
+            pcall(function()
+                CmrFwLib.activeController.timeToNextAttack = 1
+                CmrFwLib.activeController.attacking = false
+                CmrFwLib.activeController.blocking = false
+                CmrFwLib.activeController.timeToNextBlock = 0
+                CmrFwLib.activeController.increment = 3
+                CmrFwLib.activeController.hitboxMagnitude = 60
+                CmrFwLib.activeController.focusStart = 0
+                game:GetService("ReplicatedStorage").RigControllerEvent:FireServer("weaponChange", tostring(GetBladeHit()))
+                game:GetService("ReplicatedStorage").RigControllerEvent:FireServer("hit", bladehit, i, "")
+            end)
+        end
+    end
+end
+
+spawn(function()
+    while wait(0.1) do
+        if FastAttack then
+            pcall(function()
+                repeat task.wait(_G.FastAttackDelay)
+                    AttackHit()
+                until not FastAttack
+            end)
+        end
+    end
+end)
+
+local CamShake = require(game.ReplicatedStorage.Util.CameraShaker)
+CamShake:Stop()
+
+-- Toggle for Bring Mob
+local ToggleBringMob = Tabs.Setting:AddToggle("ToggleBringMob", {Title = "Bring Mob", Default = true })
+ToggleBringMob:OnChanged(function(Value)
+    BringMobs = Value
+end)
+Options.ToggleBringMob:SetValue(true)
+
+task.spawn(function()
+    while task.wait() do
+        if BringMobs then
+            pcall(function()
+                for _, v in pairs(game.Workspace.Enemies:GetChildren()) do
+                    if not string.find(v.Name, "Boss") and v.Name == MonFarm and (v.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= 350 then
+                        if InMyNetWork(v.HumanoidRootPart) then
+                            v.HumanoidRootPart.CFrame = FarmPos
+                            v.HumanoidRootPart.CanCollide = false
+                            v.HumanoidRootPart.Size = Vector3.new(1, 1, 1)
+                            if v.Humanoid:FindFirstChild("Animator") then
+                                v.Humanoid.Animator:Destroy()
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do 
+        wait()
         if setscriptable then
-        setscriptable(game.Players.LocalPlayer,"SimulationRadius",true)
+            setscriptable(game.Players.LocalPlayer, "SimulationRadius", true)
         end
         if sethiddenproperty then
-        sethiddenproperty(game.Players.LocalPlayer,"SimulationRadius",math.huge)
+            sethiddenproperty(game.Players.LocalPlayer, "SimulationRadius", math.huge)
         end
-        end
-        end)
-      
-      function InMyNetWork(object)
-      if isnetworkowner then
-      return isnetworkowner(object)
-      else
+    end
+end)
+
+function InMyNetWork(object)
+    if isnetworkowner then
+        return isnetworkowner(object)
+    else
         if (object.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= 350 then
-      return true
-      end
-      return false
-      end
-      end
+            return true
+        end
+        return false
+    end
+end
 
 
 
