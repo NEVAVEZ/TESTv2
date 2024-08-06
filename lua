@@ -4373,6 +4373,7 @@ local Client = game.Players.LocalPlayer
 local STOP = require(Client.PlayerScripts.CombatFramework.Particle)
 local STOPRL = require(game:GetService("ReplicatedStorage").CombatFramework.RigLib)
 
+-- Wrap the attack animation function
 spawn(function()
     while task.wait() do
         pcall(function()
@@ -4398,6 +4399,7 @@ spawn(function()
     end
 end)
 
+-- Function to get the blade hit
 function GetBladeHit()
     local CombatFrameworkLib = debug.getupvalues(require(game:GetService("Players").LocalPlayer.PlayerScripts.CombatFramework))
     local CmrFwLib = CombatFrameworkLib[2]
@@ -4412,6 +4414,7 @@ function GetBladeHit()
     return weapon
 end
 
+-- Function to perform the attack hit
 function AttackHit()
     local CombatFrameworkLib = debug.getupvalues(require(game:GetService("Players").LocalPlayer.PlayerScripts.CombatFramework))
     local CmrFwLib = CombatFrameworkLib[2]
@@ -4443,6 +4446,7 @@ function AttackHit()
     end
 end
 
+-- Spawn the attack hit function when FastAttack is true
 spawn(function()
     while wait(0.1) do
         if FastAttack then
@@ -4465,6 +4469,7 @@ ToggleBringMob:OnChanged(function(Value)
 end)
 Options.ToggleBringMob:SetValue(true)
 
+-- Spawn function to bring mobs
 task.spawn(function()
     while task.wait() do
         if BringMobs then
@@ -4486,6 +4491,7 @@ task.spawn(function()
     end
 end)
 
+-- Setting simulation radius
 task.spawn(function()
     while true do 
         wait()
@@ -4498,6 +4504,7 @@ task.spawn(function()
     end
 end)
 
+-- Function to check network ownership
 function InMyNetWork(object)
     if isnetworkowner then
         return isnetworkowner(object)
